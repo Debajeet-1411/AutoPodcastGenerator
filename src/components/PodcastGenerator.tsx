@@ -5,19 +5,40 @@ import { Input } from "@/components/ui/input";
 const PodcastGenerator = () => {
   const [topic, setTopic] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showMessage, setShowMessage] = useState(false);
+  const [audioUrl, setAudioUrl] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!topic.trim()) return;
     
     setIsLoading(true);
-    setShowMessage(false);
+    setError("");
+    setSuccess(false);
+    setAudioUrl("");
     
-    // Simulate loading for 2-3 seconds
-    setTimeout(() => {
+    try {
+      const response = await fetch("http://localhost:5678/webhook-test/7758d446-5f44-4908-b835-ca5b54af3e2f", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: topic }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate podcast");
+      }
+
+      const data = await response.json();
+      setAudioUrl(data.audioFile);
+      setSuccess(true);
+      setTopic(""); // Clear input
+    } catch (err) {
+      setError("Oops! Something went wrong. Please try again");
+    } finally {
       setIsLoading(false);
-      setShowMessage(true);
-    }, 2500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -73,19 +94,33 @@ const PodcastGenerator = () => {
         {/* Player Area */}
         <div className="bg-card rounded-3xl p-6 md:p-8 shadow-lg border border-border min-h-[200px] flex items-center justify-center">
           {isLoading ? (
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-primary rounded-full animate-pulse-gentle" />
-              <div className="w-3 h-3 bg-primary rounded-full animate-pulse-gentle [animation-delay:0.2s]" />
-              <div className="w-3 h-3 bg-primary rounded-full animate-pulse-gentle [animation-delay:0.4s]" />
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-3 h-3 bg-primary rounded-full animate-pulse-gentle" />
+                <div className="w-3 h-3 bg-primary rounded-full animate-pulse-gentle [animation-delay:0.2s]" />
+                <div className="w-3 h-3 bg-primary rounded-full animate-pulse-gentle [animation-delay:0.4s]" />
+              </div>
+              <p className="text-muted-foreground">Creating podcast... please wait!</p>
             </div>
-          ) : showMessage ? (
+          ) : error ? (
             <div className="text-center space-y-2 animate-fade-in">
-              <p className="text-2xl font-semibold text-primary">
-                Feature coming soon! 🎉
+              <p className="text-xl font-semibold text-destructive">
+                {error}
               </p>
-              <p className="text-muted-foreground">
-                Stay tuned for podcast generation
+            </div>
+          ) : success && audioUrl ? (
+            <div className="w-full space-y-4 animate-fade-in">
+              <p className="text-center text-lg font-semibold text-primary">
+                🎉 Podcast is ready! Click play to listen
               </p>
+              <audio 
+                controls 
+                className="w-full" 
+                src={audioUrl}
+                preload="metadata"
+              >
+                Your browser does not support the audio element.
+              </audio>
             </div>
           ) : (
             <p className="text-muted-foreground text-lg">
